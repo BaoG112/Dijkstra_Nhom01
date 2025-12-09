@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Play, RotateCcw, Trash2 } from "lucide-react"
+import { Play, RotateCcw, Trash2, Undo2 } from "lucide-react"
 import DijkstraCanvas from "@/components/dijkstra-canvas"
 import ControlPanel from "@/components/control-panel"
 import ResultsPanel from "@/components/results-panel"
@@ -24,6 +24,15 @@ interface DijkstraResult {
   distances: Record<string, number>
   path: string[]
   visitedOrder: string[]
+  executionTime: number
+}
+
+interface AppState {
+  nodes: Node[]
+  edges: Edge[]
+  startNode: string | null
+  endNode: string | null
+  isDirected: boolean
 }
 
 export default function Home() {
@@ -36,7 +45,12 @@ export default function Home() {
   const [currentStep, setCurrentStep] = useState(0)
   const [animationStep, setAnimationStep] = useState(0)
   const [isDirected, setIsDirected] = useState(true)
+  const [history, setHistory] = useState<AppState[]>([])
   const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  const saveToHistory = () => {
+    setHistory((prev) => [...prev.slice(-10), { nodes, edges, startNode, endNode, isDirected }])
+  }
 
   const addNode = (x: number, y: number) => {
     const newNode: Node = {
@@ -45,11 +59,13 @@ export default function Home() {
       y,
     }
     setNodes([...nodes, newNode])
+    saveToHistory()
   }
 
   const addEdge = (from: string, to: string, weight: number) => {
     const newEdge: Edge = { from, to, weight }
     setEdges([...edges, newEdge])
+    saveToHistory()
   }
 
   const removeNode = (id: string) => {
@@ -57,13 +73,31 @@ export default function Home() {
     setEdges(edges.filter((e) => e.from !== id && e.to !== id))
     if (startNode === id) setStartNode(null)
     if (endNode === id) setEndNode(null)
+    saveToHistory()
   }
 
   const removeEdge = (index: number) => {
     setEdges(edges.filter((_, i) => i !== index))
+    saveToHistory()
+  }
+
+  const undo = () => {
+    if (history.length > 0) {
+      const previousState = history[history.length - 1]
+      setNodes(previousState.nodes)
+      setEdges(previousState.edges)
+      setStartNode(previousState.startNode)
+      setEndNode(previousState.endNode)
+      setIsDirected(previousState.isDirected)
+      setResults(null)
+      setAnimationStep(0)
+      setHistory((prev) => prev.slice(0, -1))
+    }
   }
 
   const dijkstra = (start: string): DijkstraResult => {
+    const startTime = performance.now()
+
     const distances: Record<string, number> = {}
     const visited = new Set<string>()
     const visitedOrder: string[] = []
@@ -118,7 +152,10 @@ export default function Home() {
       }
     }
 
-    return { distances, path, visitedOrder }
+    const endTime = performance.now()
+    const executionTime = endTime - startTime
+
+    return { distances, path, visitedOrder, executionTime }
   }
 
   const runAlgorithm = () => {
@@ -163,6 +200,7 @@ export default function Home() {
     setIsRunning(false)
     setResults(null)
     setAnimationStep(0)
+    setHistory([])
   }
 
   return (
@@ -213,11 +251,11 @@ export default function Home() {
               </Card>
             )}
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <Button
                 onClick={runAlgorithm}
                 disabled={!startNode || isRunning}
-                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white gap-2 font-semibold"
+                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white gap-2 font-semibold col-span-1"
               >
                 <Play className="w-4 h-4" />
                 Chạy
@@ -225,16 +263,25 @@ export default function Home() {
               <Button
                 onClick={reset}
                 disabled={!isRunning && !results}
-                className="border-slate-600 text-slate-300 hover:bg-slate-800 gap-2 bg-transparent"
+                className="border-slate-600 text-slate-300 hover:bg-slate-800 gap-2 bg-transparent col-span-1"
                 variant="outline"
               >
                 <RotateCcw className="w-4 h-4" />
                 Đặt lại
               </Button>
               <Button
+                onClick={undo}
+                disabled={history.length === 0}
+                variant="outline"
+                className="gap-2 text-amber-400 border-amber-400/30 hover:bg-amber-400/10 bg-transparent col-span-1"
+              >
+                <Undo2 className="w-4 h-4" />
+                Hoàn tác
+              </Button>
+              <Button
                 onClick={clearAll}
                 variant="outline"
-                className="gap-2 text-red-400 border-red-400/30 hover:bg-red-400/10 bg-transparent"
+                className="gap-2 text-red-400 border-red-400/30 hover:bg-red-400/10 bg-transparent col-span-1"
               >
                 <Trash2 className="w-4 h-4" />
                 Xóa

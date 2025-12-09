@@ -1,7 +1,7 @@
 "use client"
 
 import { Card } from "@/components/ui/card"
-import { CheckCircle2, Route, XCircle, Zap } from "lucide-react"
+import { CheckCircle2, Route, XCircle, Zap, Clock } from "lucide-react"
 
 interface Node {
   id: string
@@ -13,6 +13,7 @@ interface DijkstraResult {
   distances: Record<string, number>
   path: string[]
   visitedOrder: string[]
+  executionTime: number
 }
 
 interface ResultsPanelProps {
@@ -38,6 +39,14 @@ export default function ResultsPanel(props: ResultsPanelProps) {
       </h3>
 
       <div className="space-y-3">
+        <div className="bg-slate-800/50 rounded p-3 border border-green-500/20">
+          <p className="text-xs text-slate-400 mb-1 flex items-center gap-1">
+            <Clock className="w-3 h-3 text-green-400" />
+            Thời gian xử lí
+          </p>
+          <p className="text-sm font-mono text-green-400">{props.results.executionTime.toFixed(3)} ms</p>
+        </div>
+
         <div
           className={`rounded p-3 border ${pathFound ? "bg-green-900/20 border-green-500/30" : "bg-red-900/20 border-red-500/30"}`}
         >
